@@ -1,0 +1,11 @@
+node_modules/
+packages/*/dist/
+packages/daemon/data/
+data/
+*.tmp
+.DS_Store
+coverage/
+.env
+.env.*
+!.env.example
+.compozy/

@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "dev": "pnpm --filter daemon dev & pnpm --filter web dev",
+    "build": "pnpm --filter web build && pnpm --filter daemon build",
+    "prestart": "pnpm build && node -e \"require('fs').accessSync('packages/web/dist/index.html')\"",
+    "start": "NODE_ENV=production pnpm --filter daemon start"
+  }
+}

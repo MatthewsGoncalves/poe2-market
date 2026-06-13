@@ -1,0 +1,12 @@
+{
+  "league": "Runes of Aldur",
+  "expansionName": "Return of the Ancients",
+  "poewatchLeague": "Mirage",
+  "game": "poe2",
+  "syncIntervalMs": 600000,
+  "snipeDiscountThreshold": 0.70,
+  "snipeMinValueChaos": 20,
+  "currencyErrorMinDivines": 1.5,
+  "currencyErrorTolerancePct": 0.20,
+  "daemonPort": 3001
+}

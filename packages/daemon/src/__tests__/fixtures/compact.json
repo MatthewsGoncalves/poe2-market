@@ -1,0 +1,80 @@
+[
+  {
+    "id": 1,
+    "name": "Headhunter",
+    "frame": 3,
+    "mean": 800.5,
+    "min": 650.0,
+    "max": 1200.0,
+    "links": 0,
+    "gemLevel": 0,
+    "gemQuality": 0,
+    "corrupted": false,
+    "lowConfidence": false
+  },
+  {
+    "id": 2,
+    "name": "Devouring Totem Support",
+    "frame": 4,
+    "mean": 45.0,
+    "min": 35.0,
+    "max": 60.0,
+    "links": 0,
+    "gemLevel": 20,
+    "gemQuality": 20,
+    "corrupted": false,
+    "lowConfidence": false
+  },
+  {
+    "id": 3,
+    "name": "Shavronne's Wrappings",
+    "frame": 3,
+    "mean": 1200.0,
+    "min": 950.0,
+    "max": 1800.0,
+    "links": 6,
+    "gemLevel": 0,
+    "gemQuality": 0,
+    "corrupted": false,
+    "lowConfidence": false
+  },
+  {
+    "id": 4,
+    "name": "Rare Synthesised Jewel",
+    "frame": 1,
+    "mean": 5.0,
+    "min": 2.0,
+    "max": 15.0,
+    "links": 0,
+    "gemLevel": 0,
+    "gemQuality": 0,
+    "corrupted": false,
+    "lowConfidence": true
+  },
+  {
+    "id": 5,
+    "name": "Chaos Orb",
+    "frame": 5,
+    "mean": 1.0,
+    "min": 1.0,
+    "max": 1.0,
+    "links": 0,
+    "gemLevel": 0,
+    "gemQuality": 0,
+    "corrupted": false,
+    "lowConfidence": false
+  },
+  {
+    "id": 6,
+    "name": "Devouring Totem Support",
+    "frame": 4,
+    "mean": 280.0,
+    "min": 250.0,
+    "max": 320.0,
+    "links": 0,
+    "gemLevel": 21,
+    "gemQuality": 23,
+    "corrupted": true,
+    "lowConfidence": false
+  }
+]
