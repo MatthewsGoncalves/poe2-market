@@ -1,4 +1,4 @@
-export type AppTab = 'snipes' | 'mistakes' | 'evaluator';
+export type AppTab = 'snipes' | 'mistakes' | 'evaluator' | 'search';
 
 export interface TabItem {
   id: AppTab;

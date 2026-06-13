@@ -40,6 +40,29 @@ describe('SnipePanel', () => {
     expect(screen.getByText('35%')).toBeTruthy();
   });
 
+  it('renders the item icon, category and modifiers when present', () => {
+    const richSnipes: SnipeResult[] = [
+      {
+        name: 'Doom Shelter',
+        linkCount: 0,
+        meanChaos: 200,
+        minChaos: 120,
+        profitChaos: 80,
+        discountPct: 40,
+        icon: 'https://web.poecdn.com/image/armour.png',
+        category: 'armour',
+        rarity: 'rare',
+        mods: ['+25 to maximum Life', '+30% to Cold Resistance'],
+      },
+    ];
+    render(<SnipePanel snipes={richSnipes} {...panelProps} />);
+    expect(screen.getByText('+25 to maximum Life')).toBeTruthy();
+    expect(screen.getByText('+30% to Cold Resistance')).toBeTruthy();
+    expect(screen.getByText('armour')).toBeTruthy();
+    const img = screen.getByAltText('Doom Shelter') as HTMLImageElement;
+    expect(img.src).toContain('armour.png');
+  });
+
   it('renders "No opportunities found" when the response is an empty array', () => {
     render(<SnipePanel snipes={[]} {...panelProps} />);
     expect(screen.getByText('No opportunities found')).toBeTruthy();

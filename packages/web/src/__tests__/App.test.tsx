@@ -99,4 +99,30 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('tab', { name: /Avaliador/i }));
     expect(screen.getByLabelText('Item name')).toBeTruthy();
   });
+
+  it('does not refetch snipes when only the display currency changes', async () => {
+    vi.mocked(fetchStatus).mockResolvedValue({
+      league: 'Runes of Aldur',
+      lastSyncAt: '2026-06-09T14:32:00.000Z',
+      itemCount: 100,
+      rates: { divineInChaos: 160, exaltedInChaos: 10 },
+      stale: false,
+    });
+    vi.mocked(fetchSnipes).mockResolvedValue({ results: [], generatedAt: '' });
+    vi.mocked(fetchCurrencyErrors).mockResolvedValue({ alerts: [], generatedAt: '' });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(fetchSnipes).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Exibir preços em' }), {
+      target: { value: 'chaos' },
+    });
+
+    await waitFor(() => {
+      expect(fetchSnipes).toHaveBeenCalledTimes(1);
+    });
+  });
 });

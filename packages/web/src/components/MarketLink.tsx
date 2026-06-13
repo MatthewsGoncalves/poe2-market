@@ -1,4 +1,5 @@
-import { buildTradeSearchUrl, type TradeSearchOptions } from '../utils/tradeUrl';
+import { buildTradeSearchUrl } from '../utils/tradeUrl';
+import type { TradeSearchOptions } from '../utils/tradeSearchOptions';
 
 interface Props {
   league: string;

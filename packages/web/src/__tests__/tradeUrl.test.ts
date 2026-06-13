@@ -2,14 +2,28 @@ import { describe, it, expect } from 'vitest';
 import { buildTradeSearchUrl } from '../utils/tradeUrl';
 
 describe('buildTradeSearchUrl', () => {
-  it('builds a trade2 URL with league and encoded query', () => {
+  it('builds a daemon trade-link URL with league and item name', () => {
     const url = buildTradeSearchUrl('Runes of Aldur', 'Headhunter');
-    expect(url).toMatch(/^https:\/\/www\.pathofexile\.com\/trade2\/search\/poe2\/Runes\+of\+Aldur\?q=/);
-    expect(decodeURIComponent(url.split('?q=')[1] ?? '')).toContain('"name":"Headhunter"');
+    expect(url).toMatch(
+      /^http:\/\/localhost:3001\/api\/trade-link\?league=Runes\+of\+Aldur&name=Headhunter$/,
+    );
   });
 
-  it('encodes league names with spaces using plus signs', () => {
-    const url = buildTradeSearchUrl('Hardcore Mirage', 'Headhunter');
-    expect(url).toContain('/Hardcore+Mirage?');
+  it('includes optional gem filters in the daemon URL', () => {
+    const url = buildTradeSearchUrl('Runes of Aldur', 'Headhunter', {
+      gemLevel: 21,
+      corrupted: true,
+    });
+    expect(url).toContain('gemLevel=21');
+    expect(url).toContain('corrupted=true');
+  });
+
+  it('includes mod lines and max price for filtered snipe links', () => {
+    const url = buildTradeSearchUrl('Runes of Aldur', 'Headhunter', {
+      mods: ['+25 to maximum Life'],
+      maxPriceChaos: 520,
+    });
+    expect(url).toContain('maxPrice=520');
+    expect(url).toContain('mods=%2B25+to+maximum+Life');
   });
 });

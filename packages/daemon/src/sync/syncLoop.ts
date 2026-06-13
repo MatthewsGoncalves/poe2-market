@@ -2,6 +2,7 @@ import type { CacheStore } from '../cache/cacheStore.js';
 import type { Config } from '../config.js';
 import type { MarketItem, ExchangeRates } from '../types.js';
 import { poewatchLeagueId } from './leagueValidation.js';
+import { filterPoe2MarketItems } from './poe2ItemFilter.js';
 import { fetchCompact, fetchRates, PoeWatchApiError } from './poewatchClient.js';
 
 const MIN_INTERVAL_MS = 600_000;
@@ -69,7 +70,8 @@ async function runSync(store: CacheStore, config: Config): Promise<void> {
   const result = await fetchWithRetry(config);
   if (result === null) return;
 
-  if (result.items.length === 0) {
+  const rawCount = result.items.length;
+  if (rawCount === 0) {
     console.warn('[WARN] Sync cycle failed', {
       errorMessage: 'compact returned zero items',
       usingStaleCache: true,
@@ -77,7 +79,24 @@ async function runSync(store: CacheStore, config: Config): Promise<void> {
     return;
   }
 
-  store.update(result.items, result.rates, config.league);
+  const items = await filterPoe2MarketItems(result.items);
+  if (items.length === 0) {
+    console.warn('[WARN] Sync cycle failed', {
+      errorMessage: 'no PoE 2 trade items remained after filtering',
+      usingStaleCache: true,
+    });
+    return;
+  }
+
+  if (rawCount !== items.length) {
+    console.info('[INFO] Filtered non-PoE-2 items from compact payload', {
+      before: rawCount,
+      after: items.length,
+      removed: rawCount - items.length,
+    });
+  }
+
+  store.update(items, result.rates, config.league);
   try {
     await store.saveToDisk();
   } catch (err) {
@@ -87,7 +106,7 @@ async function runSync(store: CacheStore, config: Config): Promise<void> {
 
   const durationMs = Date.now() - startMs;
   console.info('[INFO] Sync cycle completed', {
-    itemCount: result.items.length,
+    itemCount: items.length,
     divineInChaos: result.rates.divineInChaos,
     exaltedInChaos: result.rates.exaltedInChaos,
     durationMs,

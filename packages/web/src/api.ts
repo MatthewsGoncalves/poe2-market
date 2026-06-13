@@ -25,6 +25,15 @@ export interface StatusResponse {
   stale: boolean;
 }
 
+export type ItemRarityKind =
+  | 'normal'
+  | 'magic'
+  | 'rare'
+  | 'unique'
+  | 'gem'
+  | 'currency'
+  | 'card';
+
 export interface SnipeResult {
   name: string;
   linkCount: number;
@@ -32,6 +41,13 @@ export interface SnipeResult {
   minChaos: number;
   profitChaos: number;
   discountPct: number;
+  icon?: string;
+  category?: string;
+  rarity?: ItemRarityKind;
+  mods?: string[];
+  gemLevel?: number;
+  gemQuality?: number;
+  gemIsCorrupted?: boolean;
 }
 
 export interface SnipesResponse {
@@ -67,6 +83,85 @@ export type ItemEvaluationResponse =
 
 export interface HealthResponse {
   ok: boolean;
+}
+
+export type AffixKind = 'prefix' | 'suffix';
+
+export interface ParsedMod {
+  raw: string;
+  values: number[];
+  group?: string;
+  affix?: AffixKind;
+  tier?: number;
+  modName?: string;
+}
+
+export interface ParsedItem {
+  itemClass?: string;
+  rarity: string;
+  name?: string;
+  baseType?: string;
+  itemLevel?: number;
+  quality?: number;
+  corrupted: boolean;
+  gemLevel?: number;
+  gemQuality?: number;
+  mods: ParsedMod[];
+  icon?: string;
+}
+
+export interface MatchedMod {
+  index: number;
+  raw: string;
+  matched: boolean;
+  statId?: string;
+  statText?: string;
+  group?: string;
+  value?: number;
+  affix?: AffixKind;
+  tier?: number;
+  modName?: string;
+}
+
+export interface ParseItemResponse {
+  parsed: ParsedItem;
+  matchedMods: MatchedMod[];
+}
+
+export interface ModSelection {
+  enabled: boolean;
+  min?: number;
+}
+
+export interface TradeSearchResponse {
+  url: string;
+  total: number | null;
+  parsed: ParsedItem;
+  matchedMods: MatchedMod[];
+}
+
+export interface ExtraStat {
+  id: string;
+  min?: number;
+}
+
+export interface TradeSearchParams {
+  league: string;
+  itemText: string;
+  selections?: Record<number, ModSelection>;
+  corrupted?: boolean;
+  extraStats?: ExtraStat[];
+}
+
+export interface ItemNameSuggestion {
+  name: string;
+  icon?: string;
+}
+
+export interface StatSuggestion {
+  id: string;
+  text: string;
+  group: string;
 }
 
 // --- Request param types ---
@@ -105,6 +200,26 @@ async function request<T>(url: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+async function postJson<T>(url: string, body: unknown): Promise<T> {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const text = await res.text().catch(() => '');
+  if (!res.ok) {
+    let message = text || res.statusText;
+    try {
+      const parsed = JSON.parse(text) as { error?: string };
+      if (parsed?.error) message = parsed.error;
+    } catch {
+      // keep raw text
+    }
+    throw new ApiError(res.status, message);
+  }
+  return JSON.parse(text) as T;
+}
+
 // --- Public API ---
 
 export async function fetchStatus(): Promise<StatusResponse> {
@@ -140,4 +255,24 @@ export async function evaluateItem(params: EvaluateParams): Promise<ItemEvaluati
 
 export async function checkHealth(): Promise<HealthResponse> {
   return request<HealthResponse>(`${baseUrl()}/api/health`);
+}
+
+export async function parseItem(itemText: string): Promise<ParseItemResponse> {
+  return postJson<ParseItemResponse>(`${baseUrl()}/api/parse-item`, { itemText });
+}
+
+export async function tradeSearch(params: TradeSearchParams): Promise<TradeSearchResponse> {
+  return postJson<TradeSearchResponse>(`${baseUrl()}/api/trade-search`, params);
+}
+
+export async function searchItemNames(q: string): Promise<{ results: ItemNameSuggestion[] }> {
+  const url = new URL(`${baseUrl()}/api/item-names`);
+  url.searchParams.set('q', q);
+  return request<{ results: ItemNameSuggestion[] }>(url.toString());
+}
+
+export async function searchStats(q: string): Promise<{ results: StatSuggestion[] }> {
+  const url = new URL(`${baseUrl()}/api/stats`);
+  url.searchParams.set('q', q);
+  return request<{ results: StatSuggestion[] }>(url.toString());
 }

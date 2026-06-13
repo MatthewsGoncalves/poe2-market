@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { MarketItem, ExchangeRates } from '../types.js';
+import type { MarketItem, ExchangeRates, ItemRarityKind } from '../types.js';
 
 const DEFAULT_BASE_URL = 'https://api.poe.watch';
 const POEWATCH_TIMEOUT_MS = 30_000;
@@ -25,7 +25,22 @@ interface RawCompactItem {
   corrupted?: boolean;
   gemIsCorrupted?: boolean;
   lowConfidence?: boolean;
+  icon?: string;
+  category?: string;
+  frame?: number;
+  implicits?: string[] | null;
+  explicits?: string[] | null;
 }
+
+const FRAME_TO_RARITY: Record<number, ItemRarityKind> = {
+  0: 'normal',
+  1: 'magic',
+  2: 'rare',
+  3: 'unique',
+  4: 'gem',
+  5: 'currency',
+  6: 'card',
+};
 
 interface RawCompactResponse {
   items: RawCompactItem[];
@@ -56,6 +71,11 @@ function mapCompactItem(raw: RawCompactItem): MarketItem {
   if (raw.gemQuality != null && raw.gemQuality > 0) item.gemQuality = raw.gemQuality;
   const corrupted = raw.gemIsCorrupted ?? raw.corrupted;
   if (corrupted != null) item.gemIsCorrupted = corrupted;
+  if (raw.icon) item.icon = raw.icon;
+  if (raw.category) item.category = raw.category;
+  if (raw.frame != null && FRAME_TO_RARITY[raw.frame]) item.rarity = FRAME_TO_RARITY[raw.frame];
+  if (Array.isArray(raw.implicits) && raw.implicits.length > 0) item.implicits = raw.implicits;
+  if (Array.isArray(raw.explicits) && raw.explicits.length > 0) item.explicits = raw.explicits;
   return item;
 }
 

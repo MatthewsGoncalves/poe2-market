@@ -6,7 +6,8 @@ export interface CurrencySettings {
   displayCurrency: DisplayCurrency;
   expectedCurrency: CurrencyKind;
   mistakenCurrency: CurrencyKind;
-  minSnipeProfit: number;
+  /** Minimum snipe profit stored in chaos — display converts for UI only. */
+  minSnipeProfitChaos: number;
 }
 
 const STORAGE_KEY = 'poe2-market-currency-settings';
@@ -15,7 +16,7 @@ const DEFAULTS: CurrencySettings = {
   displayCurrency: 'divine',
   expectedCurrency: 'divine',
   mistakenCurrency: 'exalted',
-  minSnipeProfit: 0,
+  minSnipeProfitChaos: 0,
 };
 
 function loadSettings(): CurrencySettings {
@@ -27,7 +28,10 @@ function loadSettings(): CurrencySettings {
       displayCurrency: parsed.displayCurrency ?? DEFAULTS.displayCurrency,
       expectedCurrency: parsed.expectedCurrency ?? DEFAULTS.expectedCurrency,
       mistakenCurrency: parsed.mistakenCurrency ?? DEFAULTS.mistakenCurrency,
-      minSnipeProfit: parsed.minSnipeProfit ?? DEFAULTS.minSnipeProfit,
+      minSnipeProfitChaos:
+        parsed.minSnipeProfitChaos ??
+        (parsed as { minSnipeProfit?: number }).minSnipeProfit ??
+        DEFAULTS.minSnipeProfitChaos,
     };
   } catch {
     return DEFAULTS;

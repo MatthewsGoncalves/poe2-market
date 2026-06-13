@@ -1,67 +1,8 @@
-const TRADE_BASE = 'https://www.pathofexile.com/trade2/search/poe2';
+import type { TradeSearchOptions } from './tradeSearchOptions';
+import type { ExtraStat, ModSelection } from '../api';
 
-export interface TradeSearchOptions {
-  linkCount?: number;
-  gemLevel?: number;
-  gemQuality?: number;
-  corrupted?: boolean;
-}
-
-function encodeLeague(league: string): string {
-  return league
-    .replace(/ /g, '+')
-    .replace(/[^A-Za-z0-9\-._~+]/g, (char) =>
-      `%${char.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0')}`,
-    );
-}
-
-function buildTradeQuery(itemName: string, options?: TradeSearchOptions) {
-  const query: Record<string, unknown> = {
-    status: { option: 'online' },
-    name: itemName,
-    stats: [{ type: 'and', filters: [] }],
-  };
-
-  const filters: Record<string, unknown> = {};
-  const miscFilters: Record<string, unknown> = {};
-
-  if (options?.linkCount != null && options.linkCount > 0) {
-    filters.socket_filters = {
-      disabled: false,
-      filters: {
-        links: { min: options.linkCount, max: options.linkCount },
-      },
-    };
-  }
-
-  if (options?.gemLevel != null && options.gemLevel > 0) {
-    miscFilters.gem_level = { min: options.gemLevel, max: options.gemLevel };
-  }
-
-  if (options?.gemQuality != null && options.gemQuality > 0) {
-    miscFilters.gem_quality = { min: options.gemQuality, max: options.gemQuality };
-  }
-
-  if (options?.corrupted != null) {
-    miscFilters.corrupted = { option: options.corrupted ? 'true' : 'false' };
-  }
-
-  if (Object.keys(miscFilters).length > 0) {
-    filters.misc_filters = { disabled: false, filters: miscFilters };
-  }
-
-  if (Object.keys(filters).length > 0) {
-    query.filters = filters;
-  }
-
-  return {
-    query,
-    sort: { price: 'asc' },
-  };
-}
-
-export function buildTradeFallbackUrl(league: string): string {
-  return `${TRADE_BASE}/${encodeLeague(league)}`;
+function daemonBaseUrl(): string {
+  return import.meta.env.VITE_DAEMON_URL ?? 'http://localhost:3001';
 }
 
 export function buildTradeSearchUrl(
@@ -69,6 +10,40 @@ export function buildTradeSearchUrl(
   itemName: string,
   options?: TradeSearchOptions,
 ): string {
-  const query = encodeURIComponent(JSON.stringify(buildTradeQuery(itemName, options)));
-  return `${TRADE_BASE}/${encodeLeague(league)}?q=${query}`;
+  const url = new URL(`${daemonBaseUrl()}/api/trade-link`);
+  url.searchParams.set('league', league);
+  url.searchParams.set('name', itemName);
+  if (options?.gemLevel != null) url.searchParams.set('gemLevel', String(options.gemLevel));
+  if (options?.gemQuality != null) url.searchParams.set('gemQuality', String(options.gemQuality));
+  if (options?.corrupted != null) url.searchParams.set('corrupted', String(options.corrupted));
+  if (options?.maxPriceChaos != null) {
+    url.searchParams.set('maxPrice', String(options.maxPriceChaos));
+  }
+  for (const mod of options?.mods ?? []) {
+    url.searchParams.append('mods', mod);
+  }
+  return url.toString();
 }
+
+/** Build a redirect URL that carries the full parsed item + mod filters to the trade site. */
+export function buildPreciseTradeLinkUrl(
+  league: string,
+  itemText: string,
+  selections?: Record<number, ModSelection>,
+  extraStats?: ExtraStat[],
+  corrupted?: boolean,
+): string {
+  const url = new URL(`${daemonBaseUrl()}/api/trade-link`);
+  url.searchParams.set('league', league);
+  url.searchParams.set('itemText', itemText);
+  if (selections && Object.keys(selections).length > 0) {
+    url.searchParams.set('selections', JSON.stringify(selections));
+  }
+  if (extraStats && extraStats.length > 0) {
+    url.searchParams.set('extraStats', JSON.stringify(extraStats));
+  }
+  if (corrupted != null) url.searchParams.set('corrupted', String(corrupted));
+  return url.toString();
+}
+
+export type { TradeSearchOptions };

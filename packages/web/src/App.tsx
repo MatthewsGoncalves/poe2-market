@@ -5,6 +5,7 @@ import { StatusHeader } from './components/StatusHeader';
 import { SnipePanel } from './components/SnipePanel';
 import { CurrencyErrorPanel } from './components/CurrencyErrorPanel';
 import { InventoryEvaluator } from './components/InventoryEvaluator';
+import { ItemSearch } from './components/ItemSearch';
 import { CurrencyToolbar } from './components/CurrencyToolbar';
 import { TabBar, type AppTab } from './components/TabBar';
 import {
@@ -30,10 +31,7 @@ export function App() {
 
   const refreshMarketData = useCallback(async () => {
     const [snipesRes, errorsRes] = await Promise.all([
-      fetchSnipes({
-        minProfit: currencySettings.minSnipeProfit,
-        currency: currencySettings.displayCurrency,
-      }),
+      fetchSnipes({ minProfit: currencySettings.minSnipeProfitChaos }),
       fetchCurrencyErrors({
         expected: currencySettings.expectedCurrency,
         mistaken: currencySettings.mistakenCurrency,
@@ -41,7 +39,11 @@ export function App() {
     ]);
     setSnipes(snipesRes.results);
     setAlerts(errorsRes.alerts);
-  }, [currencySettings]);
+  }, [
+    currencySettings.minSnipeProfitChaos,
+    currencySettings.expectedCurrency,
+    currencySettings.mistakenCurrency,
+  ]);
 
   const handleCurrencyChange = (settings: CurrencySettings) => {
     setCurrencySettings(settings);
@@ -76,7 +78,7 @@ export function App() {
     refreshMarketData().catch((err) => {
       setFetchError(err instanceof Error ? err.message : 'Failed to refresh market data');
     });
-  }, [status?.lastSyncAt, currencySettings, loading, refreshMarketData]);
+  }, [status?.lastSyncAt, refreshMarketData, loading]);
 
   if (loading) {
     return (
@@ -91,6 +93,7 @@ export function App() {
     { id: 'snipes' as const, label: 'Snipes', badge: snipes.length },
     { id: 'mistakes' as const, label: 'Erros de moeda', badge: alerts.length },
     { id: 'evaluator' as const, label: 'Avaliador' },
+    { id: 'search' as const, label: 'Busca precisa' },
   ];
 
   return (
@@ -130,6 +133,7 @@ export function App() {
             settings={currencySettings}
             onChange={handleCurrencyChange}
             variant="snipes"
+            rates={rates}
           />
           <SnipePanel
             snipes={snipes}
@@ -159,6 +163,7 @@ export function App() {
             settings={currencySettings}
             onChange={handleCurrencyChange}
             variant="mistakes"
+            rates={rates}
           />
           <CurrencyErrorPanel
             alerts={alerts}
@@ -187,12 +192,32 @@ export function App() {
             settings={currencySettings}
             onChange={handleCurrencyChange}
             variant="evaluator"
+            rates={rates}
           />
           <InventoryEvaluator
             league={league}
             displayCurrency={currencySettings.displayCurrency}
             rates={rates}
           />
+        </section>
+
+        <section
+          role="tabpanel"
+          id="panel-search"
+          aria-labelledby="tab-search"
+          hidden={activeTab !== 'search'}
+          className="tab-panel"
+        >
+          <header className="tab-panel-header">
+            <div>
+              <h2 className="panel-title">Busca precisa</h2>
+              <p className="panel-subtitle">
+                Cole um item do jogo (Ctrl+C) para gerar uma busca exata por prefixos, sufixos e
+                rolls
+              </p>
+            </div>
+          </header>
+          <ItemSearch league={league} />
         </section>
       </main>
     </div>

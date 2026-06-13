@@ -7,6 +7,10 @@ import type { CacheStore } from '../cache/cacheStore.js';
 import { CacheStore as RealCacheStore } from '../cache/cacheStore.js';
 import type { MarketItem } from '../types.js';
 
+vi.mock('../sync/poe2ItemFilter.js', () => ({
+  filterPoe2MarketItems: vi.fn(async (items: MarketItem[]) => items),
+}));
+
 vi.mock('../sync/poewatchClient.js', () => {
   class PoeWatchApiError extends Error {
     statusCode: number;

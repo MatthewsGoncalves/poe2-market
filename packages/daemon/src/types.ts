@@ -1,3 +1,12 @@
+export type ItemRarityKind =
+  | 'normal'
+  | 'magic'
+  | 'rare'
+  | 'unique'
+  | 'gem'
+  | 'currency'
+  | 'card';
+
 export interface MarketItem {
   name: string;
   mean: number;
@@ -7,6 +16,12 @@ export interface MarketItem {
   gemQuality?: number;
   gemIsCorrupted?: boolean;
   lowConfidence: boolean;
+  icon?: string;
+  category?: string;
+  rarity?: ItemRarityKind;
+  /** Modifier lines provided by poe.watch (usually only for tracked variants). */
+  implicits?: string[];
+  explicits?: string[];
 }
 
 export interface ExchangeRates {
@@ -38,6 +53,13 @@ export interface SnipeResult {
   minChaos: number;
   profitChaos: number;
   discountPct: number;
+  icon?: string;
+  category?: string;
+  rarity?: ItemRarityKind;
+  mods?: string[];
+  gemLevel?: number;
+  gemQuality?: number;
+  gemIsCorrupted?: boolean;
 }
 
 export type CurrencyKind = 'chaos' | 'divine' | 'exalted';

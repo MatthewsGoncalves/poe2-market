@@ -1,6 +1,7 @@
 import type { SnipeResult, ExchangeRates } from '../api';
 import type { CurrencyKind } from './CurrencyIcon';
 import { CurrencyIcon } from './CurrencyIcon';
+import { ItemIcon } from './ItemIcon';
 import { MarketLink } from './MarketLink';
 import { Pagination } from './Pagination';
 import { PriceAmount } from './PriceAmount';
@@ -44,12 +45,33 @@ export function SnipePanel({ snipes, league, displayCurrency, rates }: Props) {
             <tr key={`${s.name}-${s.linkCount}-${(page - 1) * pageSize + i}`}>
               <td>
                 <span className="item-name-cell">
-                  <span className="item-name">{s.name}</span>
-                  <MarketLink
-                    league={league}
-                    itemName={s.name}
-                    options={s.linkCount > 0 ? { linkCount: s.linkCount } : undefined}
-                  />
+                  <ItemIcon src={s.icon} alt={s.name} />
+                  <span className="item-info">
+                    <span className="item-name-row">
+                      <span className={`item-name rarity-${s.rarity ?? 'normal'}`}>{s.name}</span>
+                      <MarketLink
+                        league={league}
+                        itemName={s.name}
+                        options={{
+                          gemLevel: s.gemLevel,
+                          gemQuality: s.gemQuality,
+                          corrupted: s.gemIsCorrupted,
+                          mods: s.mods,
+                          maxPriceChaos: s.minChaos,
+                        }}
+                      />
+                    </span>
+                    {s.category && <span className="item-category">{s.category}</span>}
+                    {s.mods && s.mods.length > 0 && (
+                      <span className="item-mods">
+                        {s.mods.map((mod, mi) => (
+                          <span key={mi} className="item-mod">
+                            {mod}
+                          </span>
+                        ))}
+                      </span>
+                    )}
+                  </span>
                 </span>
               </td>
               <td className="num">{s.linkCount}</td>

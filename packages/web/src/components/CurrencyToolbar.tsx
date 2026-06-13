@@ -1,6 +1,8 @@
 import type { CurrencyKind } from './CurrencyIcon';
-import { CURRENCY_LABELS } from '../utils/currency';
+import { CurrencyIcon } from './CurrencyIcon';
+import { CURRENCY_LABELS, fromChaos, toChaos } from '../utils/currency';
 import type { CurrencySettings } from '../hooks/useCurrencySettings';
+import type { ExchangeRates } from '../api';
 
 export type CurrencyToolbarVariant = 'snipes' | 'mistakes' | 'evaluator';
 
@@ -8,11 +10,12 @@ interface Props {
   settings: CurrencySettings;
   onChange: (settings: CurrencySettings) => void;
   variant: CurrencyToolbarVariant;
+  rates: ExchangeRates;
 }
 
 const CURRENCY_OPTIONS: CurrencyKind[] = ['chaos', 'divine', 'exalted'];
 
-export function CurrencyToolbar({ settings, onChange, variant }: Props) {
+export function CurrencyToolbar({ settings, onChange, variant, rates }: Props) {
   const update = (patch: Partial<CurrencySettings>) => {
     onChange({ ...settings, ...patch });
   };
@@ -80,17 +83,20 @@ export function CurrencyToolbar({ settings, onChange, variant }: Props) {
       {variant === 'snipes' && (
         <div className="currency-toolbar-group">
           <label className="field-label" htmlFor={`min-snipe-profit-${variant}`}>
-            Lucro mínimo
+            Lucro mínimo <CurrencyIcon kind={settings.displayCurrency} />
           </label>
           <input
             id={`min-snipe-profit-${variant}`}
             type="number"
             min={0}
             step={0.1}
-            value={settings.minSnipeProfit}
-            onChange={(e) =>
-              update({ minSnipeProfit: e.target.value === '' ? 0 : Number(e.target.value) })
-            }
+            value={fromChaos(settings.minSnipeProfitChaos, settings.displayCurrency, rates)}
+            onChange={(e) => {
+              const amount = e.target.value === '' ? 0 : Number(e.target.value);
+              update({
+                minSnipeProfitChaos: toChaos(amount, settings.displayCurrency, rates),
+              });
+            }}
           />
         </div>
       )}

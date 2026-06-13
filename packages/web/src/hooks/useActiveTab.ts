@@ -2,7 +2,7 @@ import type { AppTab } from '../components/TabBar';
 
 const STORAGE_KEY = 'poe2-market-active-tab';
 
-const VALID_TABS: AppTab[] = ['snipes', 'mistakes', 'evaluator'];
+const VALID_TABS: AppTab[] = ['snipes', 'mistakes', 'evaluator', 'search'];
 
 export function readActiveTab(): AppTab {
   try {

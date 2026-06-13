@@ -24,14 +24,25 @@ export function scanSnipes(store: CacheStore, config: Config): SnipeResult[] {
     const profitChaos = Math.round((item.mean - item.min) * 10) / 10;
     const discountPct = Math.round((1 - item.min / item.mean) * 100);
 
-    results.push({
+    const mods = [...(item.implicits ?? []), ...(item.explicits ?? [])];
+
+    const result: SnipeResult = {
       name: item.name,
       linkCount: item.linkCount ?? 0,
       meanChaos: item.mean,
       minChaos: item.min,
       profitChaos,
       discountPct,
-    });
+    };
+    if (item.icon) result.icon = item.icon;
+    if (item.category) result.category = item.category;
+    if (item.rarity) result.rarity = item.rarity;
+    if (mods.length > 0) result.mods = mods;
+    if (item.gemLevel != null) result.gemLevel = item.gemLevel;
+    if (item.gemQuality != null) result.gemQuality = item.gemQuality;
+    if (item.gemIsCorrupted != null) result.gemIsCorrupted = item.gemIsCorrupted;
+
+    results.push(result);
   }
 
   results.sort((a, b) => b.profitChaos - a.profitChaos);

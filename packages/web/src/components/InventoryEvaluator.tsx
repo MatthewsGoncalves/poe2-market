@@ -128,7 +128,6 @@ export function InventoryEvaluator({ league, displayCurrency, rates }: Props) {
                   league={league}
                   itemName={result.name}
                   options={{
-                    linkCount,
                     gemLevel,
                     gemQuality,
                     corrupted: corrupted || undefined,

@@ -1,10 +1,51 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { CacheStore } from '../cache/cacheStore.js';
 import type { Config } from '../config.js';
 import type { MarketItem } from '../types.js';
 import { buildServer } from '../api/server.js';
+
+vi.mock('../sync/tradeLink.js', () => ({
+  resolveTradeSearchUrl: vi.fn(),
+  resolvePreciseTradeUrl: vi.fn(),
+}));
+
+import { resolveTradeSearchUrl, resolvePreciseTradeUrl } from '../sync/tradeLink.js';
+import { seedStatIndexForTests, normalizeStatText, type StatEntry } from '../sync/statIndex.js';
+import { seedTradeItemIndexForTests } from '../sync/tradeItemIndex.js';
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+function seedIndexes(): void {
+  const entries: StatEntry[] = [
+    { id: 'explicit.stat_life', text: '# to maximum Life', group: 'explicit' },
+    { id: 'explicit.stat_cold', text: '#% to Cold Resistance', group: 'explicit' },
+  ];
+  const byText = new Map<string, StatEntry[]>();
+  for (const e of entries) byText.set(normalizeStatText(e.text), [e]);
+  seedStatIndexForTests({ loadedAt: Date.now(), byText });
+
+  seedTradeItemIndexForTests({
+    loadedAt: Date.now(),
+    byName: new Map([['Headhunter', { kind: 'unique', name: 'Headhunter' }]]),
+    byType: new Map([
+      ['Leather Belt', { kind: 'type', category: 'accessory.belt', type: 'Leather Belt' }],
+    ]),
+  });
+}
+
+const PASTED_ITEM = `Item Class: Belts
+Rarity: Rare
+Doom Coil
+Leather Belt
+--------
+Item Level: 80
+--------
++25 to maximum Life
++30% to Cold Resistance`;
 
 const BASE_CONFIG: Config = {
   league: 'TestLeague',
@@ -281,6 +322,205 @@ describe('GET /api/currency-errors', () => {
     });
     expect(res.statusCode).toBe(200);
     expect(res.json().alerts).toHaveLength(1);
+  });
+});
+
+describe('GET /api/trade-link', () => {
+  it('redirects to the official trade site search URL', async () => {
+    vi.mocked(resolveTradeSearchUrl).mockResolvedValue(
+      'https://www.pathofexile.com/trade2/search/poe2/Runes%20of%20Aldur/L6XwDWBSn',
+    );
+
+    const store = makeStore([]);
+    const app = buildServer(store, BASE_CONFIG);
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/trade-link?league=Runes%20of%20Aldur&name=Headhunter',
+    });
+
+    expect(res.statusCode).toBe(302);
+    expect(res.headers.location).toBe(
+      'https://www.pathofexile.com/trade2/search/poe2/Runes%20of%20Aldur/L6XwDWBSn',
+    );
+    expect(resolveTradeSearchUrl).toHaveBeenCalledWith('Runes of Aldur', 'Headhunter', {});
+  });
+
+  it('forwards mod lines and max price filters to resolveTradeSearchUrl', async () => {
+    vi.mocked(resolveTradeSearchUrl).mockResolvedValue(
+      'https://www.pathofexile.com/trade2/search/poe2/Runes%20of%20Aldur/filtered',
+    );
+
+    const store = makeStore([]);
+    const app = buildServer(store, BASE_CONFIG);
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/trade-link?league=Runes%20of%20Aldur&name=Headhunter&maxPrice=520&mods=%2B25%20to%20maximum%20Life',
+    });
+
+    expect(res.statusCode).toBe(302);
+    expect(resolveTradeSearchUrl).toHaveBeenCalledWith('Runes of Aldur', 'Headhunter', {
+      maxPriceChaos: 520,
+      mods: ['+25 to maximum Life'],
+    });
+  });
+
+  it('redirects with precise filters when itemText is provided', async () => {
+    seedIndexes();
+    vi.mocked(resolvePreciseTradeUrl).mockResolvedValue({
+      url: 'https://www.pathofexile.com/trade2/search/poe2/TestLeague/precise123',
+      total: 3,
+    });
+
+    const store = makeStore([]);
+    const app = buildServer(store, BASE_CONFIG);
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/trade-link?league=TestLeague&itemText=${encodeURIComponent(PASTED_ITEM)}`,
+    });
+
+    expect(res.statusCode).toBe(302);
+    expect(res.headers.location).toContain('precise123');
+    expect(resolvePreciseTradeUrl).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('POST /api/parse-item', () => {
+  it('parses pasted item text and returns matched mods', async () => {
+    seedIndexes();
+    const store = makeStore([]);
+    const app = buildServer(store, BASE_CONFIG);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/parse-item',
+      payload: { itemText: PASTED_ITEM },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.parsed.rarity).toBe('Rare');
+    expect(body.parsed.baseType).toBe('Leather Belt');
+    expect(body.matchedMods).toHaveLength(2);
+    expect(body.matchedMods[0]).toMatchObject({ matched: true, statId: 'explicit.stat_life' });
+  });
+
+  it('resolves the item icon from the market cache by base type', async () => {
+    seedIndexes();
+    const store = makeStore([
+      { name: 'Leather Belt', mean: 5, min: 4, lowConfidence: false, icon: 'https://cdn/belt.png' },
+    ]);
+    const app = buildServer(store, BASE_CONFIG);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/parse-item',
+      payload: { itemText: PASTED_ITEM },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().parsed.icon).toBe('https://cdn/belt.png');
+  });
+
+  it('returns 400 when itemText is missing', async () => {
+    const store = makeStore([]);
+    const app = buildServer(store, BASE_CONFIG);
+    const res = await app.inject({ method: 'POST', url: '/api/parse-item', payload: {} });
+    expect(res.statusCode).toBe(400);
+  });
+});
+
+describe('GET /api/item-names', () => {
+  it('returns matching names from the cache (with icon) and the trade index', async () => {
+    seedIndexes();
+    const store = makeStore([
+      { name: 'Leather Belt', mean: 5, min: 4, lowConfidence: false, icon: 'https://cdn/belt.png' },
+    ]);
+    const app = buildServer(store, BASE_CONFIG);
+    const res = await app.inject({ method: 'GET', url: '/api/item-names?q=lea' });
+    expect(res.statusCode).toBe(200);
+    const names = res.json().results as { name: string; icon?: string }[];
+    const belt = names.find((n) => n.name === 'Leather Belt');
+    expect(belt?.icon).toBe('https://cdn/belt.png');
+  });
+
+  it('returns empty results for short queries', async () => {
+    const store = makeStore([]);
+    const app = buildServer(store, BASE_CONFIG);
+    const res = await app.inject({ method: 'GET', url: '/api/item-names?q=a' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().results).toEqual([]);
+  });
+});
+
+describe('GET /api/stats', () => {
+  it('returns matching stat suggestions', async () => {
+    seedIndexes();
+    const store = makeStore([]);
+    const app = buildServer(store, BASE_CONFIG);
+    const res = await app.inject({ method: 'GET', url: '/api/stats?q=maximum%20life' });
+    expect(res.statusCode).toBe(200);
+    const ids = (res.json().results as { id: string }[]).map((r) => r.id);
+    expect(ids).toContain('explicit.stat_life');
+  });
+});
+
+describe('POST /api/trade-search', () => {
+  it('builds a precise query and returns the resolved url and total', async () => {
+    seedIndexes();
+    vi.mocked(resolvePreciseTradeUrl).mockResolvedValue({
+      url: 'https://www.pathofexile.com/trade2/search/poe2/TestLeague/abc123',
+      total: 7,
+    });
+
+    const store = makeStore([]);
+    const app = buildServer(store, BASE_CONFIG);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/trade-search',
+      payload: { league: 'TestLeague', itemText: PASTED_ITEM },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.url).toContain('/abc123');
+    expect(body.total).toBe(7);
+    expect(resolvePreciseTradeUrl).toHaveBeenCalledTimes(1);
+
+    const [league, queryBody] = vi.mocked(resolvePreciseTradeUrl).mock.calls[0]!;
+    expect(league).toBe('TestLeague');
+    expect((queryBody as any).engine).toBe('new');
+    expect((queryBody as any).query.stats[0].filters).toEqual([
+      { id: 'explicit.stat_life', disabled: false, value: { min: 25 } },
+      { id: 'explicit.stat_cold', disabled: false, value: { min: 30 } },
+    ]);
+  });
+
+  it('redirects precise searches via POST /api/trade-link', async () => {
+    seedIndexes();
+    vi.mocked(resolvePreciseTradeUrl).mockResolvedValue({
+      url: 'https://www.pathofexile.com/trade2/search/poe2/TestLeague/post123',
+      total: 2,
+    });
+
+    const store = makeStore([]);
+    const app = buildServer(store, BASE_CONFIG);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/trade-link',
+      payload: { league: 'TestLeague', itemText: PASTED_ITEM },
+    });
+
+    expect(res.statusCode).toBe(302);
+    expect(res.headers.location).toContain('post123');
+    expect(resolvePreciseTradeUrl).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns 400 when league or itemText is missing', async () => {
+    const store = makeStore([]);
+    const app = buildServer(store, BASE_CONFIG);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/trade-search',
+      payload: { itemText: PASTED_ITEM },
+    });
+    expect(res.statusCode).toBe(400);
   });
 });
 
